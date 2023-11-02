@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.ListIterator;
 import java.util.StringTokenizer;
@@ -218,13 +219,72 @@ abstract class RtspDemo {
   /** Creates a OPTIONS response string
    * @return  Options string, starting with: Public: ...
    */
-  abstract String getOptions();
+  String getOptions() {
+    return "Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE" + CRLF;
+  }
 
   /**
    * Creates a DESCRIBE response string
+   * https://www.ietf.org/rfc/rfc2327.txt
+   * SDP includes:
+   *    o The type of media (video, audio, etc)
+   *    o The transport protocol (RTP/UDP/IP, H.320, etc)
+   *    o The format of the media (H.261 video, MPEG video, etc)
+   *    o maybe Multicast address for media
+   *    o maybe Transport Port for media
+   *
    * @return String with content
    */
-  abstract String getDescribe(VideoMetadata meta, int RTP_dest_port);
+  String getDescribe(VideoMetadata meta, int RTP_dest_port) {
+    StringWriter rtspHeader = new StringWriter();
+    StringWriter rtspBody = new StringWriter();
+
+    // Write the body first, so we can get the size later
+
+    // Session description
+    // v=  (protocol version)
+    // o=  (owner/creator and session identifier).
+    // s=  (session name)
+    rtspBody.write("v=0" + CRLF);
+    rtspBody.write("o=- 0 0 IN IP4 0.0.0.0" + CRLF);
+    rtspBody.write("s=RTSP-Streaming" + CRLF);
+    rtspBody.write("i=" + CRLF);
+
+    // Time description
+    // t= (time the session is active)
+    rtspBody.write("t=0 0" + CRLF);
+    // Stream control
+    //
+
+    // Media description
+    // m=  (media name and transport address)
+    rtspBody.write("m=video ..."  + CRLF);
+    rtspBody.write("a=control ..." + CRLF);
+    rtspBody.write("a=rtpmap:" + MJPEG_TYPE + " JPEG/90000" + CRLF);
+    // rtspBody.write("a=mimetype:string;\"video/mjpeg\"" + CRLF);
+    rtspBody.write("a=framerate:" + meta.getFramerate() + CRLF);
+    // Audio ist not supported yet
+    rtspBody.write("m=audio " + "0" + " RTP/AVP " + "0" + CRLF);
+    rtspBody.write("a=rtpmap:" + "0" + " PCMU/8000" + CRLF);
+    rtspBody.write("a=control:trackID=" + "1" + CRLF);
+    //
+    rtspBody.write("a=range:npt=0-");
+    if (meta.getDuration() > 0.0) {
+      rtspBody.write(Double.toString(meta.getDuration()));
+    }
+    rtspBody.write(CRLF);
+
+    // rtspHeader.write("Content-Base: " + VideoFileName + CRLF);
+    rtspHeader.write("Content-Type: " + "application/sdp" + CRLF);
+    rtspHeader.write("Content-Length: " + rtspBody.toString().length() + CRLF);
+    rtspHeader.write(CRLF);
+
+    return rtspHeader + rtspBody.toString();
+  }
+
+
+
+
 
 
   /**
