@@ -119,16 +119,6 @@ public class Rtsp extends RtspDemo{
             RTSPBufferedWriter.flush();
         } catch (Exception e){
             System.exit(-1);
-        };
-    }
-
-    @Override
-    String getOptions() {
-        return null;
-    }
-
-    @Override
-    String getDescribe(VideoMetadata meta, int RTP_dest_port) {
-        return null;
+        }
     }
 }
