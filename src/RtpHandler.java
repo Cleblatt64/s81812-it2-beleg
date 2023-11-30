@@ -45,6 +45,7 @@ public class RtpHandler {
     private int playbackIndex = -1;
     private HashMap<Integer, List<Integer>> sameTimestamps = null;
     private ReceptionStatistic statistics = null;
+    private Boolean isServer = false;
 
     /**
      * Create a new RtpHandler as server.
@@ -52,6 +53,7 @@ public class RtpHandler {
      * @param fecGroupSize Group size for FEC packets. If the value is 0, FEC will be disabled.
      */
     public RtpHandler(int fecGroupSize) {
+        isServer = true;
         if (fecGroupSize > 0) {
             fecEncodingEnabled = true;
             fecHandler = new FecHandler(fecGroupSize);
@@ -64,11 +66,24 @@ public class RtpHandler {
      * @param useFec Use FEC correction or not
      */
     public RtpHandler(boolean useFec) {
+        isServer = false;
         fecDecodingEnabled = useFec;
         fecHandler = new FecHandler(useFec);
         mediaPackets = new HashMap<>();
         sameTimestamps = new HashMap<>();
         statistics = new ReceptionStatistic();
+    }
+
+    public void reset() {
+        currentSeqNb = 0;
+        //fecHandler.reset();
+        playbackIndex = -1;
+
+        if (!isServer) {
+            //mediaPackets.clear();
+            //sameTimestamps.clear();
+            statistics = new ReceptionStatistic();
+        }
     }
 
     /**
@@ -201,7 +216,7 @@ public class RtpHandler {
         }
 
         byte[] image = JpegFrame.combineToOneImage(packetList);
-        logger.log(Level.FINE, "Display TS: "
+        logger.log(Level.FINER, "Display TS: "
                 + (packetList.get(0).gettimestamp() & 0xFFFFFFFFL)
                 + " size: " + image.length);
 
@@ -372,7 +387,7 @@ public class RtpHandler {
         Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
         int index = number % 0x10000; // account overflow of SNr (16 Bit)
         RTPpacket packet = mediaPackets.get(index);
-        logger.log(Level.FINE, "FEC: get RTP nu: " + index);
+        logger.log(Level.FINER, "FEC: get RTP nu: " + index);
 
         if (packet == null) {
             statistics.packetsLost++;

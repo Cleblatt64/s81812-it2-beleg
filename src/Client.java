@@ -15,7 +15,7 @@ import javax.swing.*;
 import javax.swing.Timer;
 
 public class Client {
-  static int videoLength = 2800;
+  static int videoLength = 2800;  // Demovideo htw.mjpeg, no metadata in MJPEG
 
   // GUI
   // ----
@@ -30,19 +30,25 @@ public class Client {
   JPanel buttonPanel = new JPanel(); // Buttons
   JPanel statsPanel = new JPanel();
   JPanel inputPanel = new JPanel();
+  JPanel pufferPanel = new JPanel();
   JLabel iconLabel = new JLabel(); // Image
   JLabel statusLabel = new JLabel("Status: "); // Statistics
   JLabel pufferLabel = new JLabel("Puffer: "); // Statistics
+  JLabel receiveLabel = new JLabel("Receive: "); // Statistics
+  JLabel receiveLabel2 = new JLabel("Receive2: "); // Statistics
   JLabel statsLabel = new JLabel("Statistics: "); // Statistics
+  JLabel statsLabel2 = new JLabel("Statistics2: "); // Statistics
   JLabel fecLabel = new JLabel("FEC: "); // Statistics
+  JLabel fecLabel2 = new JLabel("FEC2: "); // Statistics
   ImageIcon icon;
   JTextField textField = new JTextField("mystream", 30);
+  JTextField pufferNumber = new JTextField("50", 3);
   JProgressBar progressBuffer = new JProgressBar(0, 100);
   JProgressBar progressPosition = new JProgressBar(0, videoLength);
-  JCheckBox checkBoxFec = new JCheckBox("FEC");
+  JCheckBox checkBoxFec = new JCheckBox("nutze FEC");
   ButtonGroup encryptionButtons = null;
 
-  int iteration = 0;
+  int iteration = 0;  // for displaying statistics
 
   // RTP variables:
   // ----------------
@@ -53,8 +59,8 @@ public class Client {
   // static int FEC_RCV_PORT = 25002; // port where the client will receive the RTP packets
 
   static final int MAX_FRAME_SIZE = 65536;
-  static final int RCV_RATE = 2; // interval for receiving loop
-  int jitterBufferSize = 50; // size of the input buffer => start delay
+  static final int RCV_RATE = 2;  // interval for receiving loop
+  static int jitterBufferSize = 50;      // size of the input buffer => start delay
   static final int FRAME_RATE = 40;  // default frame rate
   Timer timer; // timer used to receive data from the UDP socket
   Timer timerPlay; // timer used to display the frames at correct frame rate
@@ -98,13 +104,20 @@ public class Client {
     describeButton.addActionListener(new describeButtonListener());
     iconLabel.setIcon(null);     // Image display label
 
-    // Text
-    statsPanel.setLayout(new GridLayout(5, 0));
+    // Statistic Panel
+    statsPanel.setLayout(new GridLayout(5, 2));
     statsPanel.add(statusLabel);
     statsPanel.add(pufferLabel);
+    statsPanel.add(receiveLabel);
+    statsPanel.add(receiveLabel2);
     statsPanel.add(statsLabel);
+    statsPanel.add(statsLabel2);
     statsPanel.add(fecLabel);
+    statsPanel.add(fecLabel2);
     statsPanel.add(checkBoxFec);
+    pufferPanel.add(new JLabel("Puffergröße: "));
+    pufferPanel.add(pufferNumber);
+    statsPanel.add(pufferPanel);
 
     inputPanel.setLayout(new BorderLayout());
     inputPanel.add(textField, BorderLayout.SOUTH);
@@ -116,22 +129,27 @@ public class Client {
     mainPanel.add(iconLabel);
     mainPanel.add(buttonPanel);
     mainPanel.add(encryptionPanel);
-    mainPanel.add(statsPanel);
+    mainPanel.add(statsPanel);      // Statistics
     mainPanel.add(progressBuffer);
     mainPanel.add(progressPosition);
     mainPanel.add(inputPanel);
     iconLabel.setBounds(0, 0, 640, 480);
     buttonPanel.setBounds(0, 480, 640, 50);
     encryptionPanel.setBounds(10, 530, 640, 30);
-    statsPanel.setBounds(10, 560, 620, 150);
-    progressBuffer.setBounds(10, 710, 620, 20);
-    progressPosition.setBounds(10, 740, 620, 20);
-    inputPanel.setBounds(10, 760, 620, 50);
+    statsPanel.setBounds(10, 560, 620, 160);
+    progressBuffer.setBounds(10, 720, 620, 20);
+    progressPosition.setBounds(10, 750, 620, 20);
+    inputPanel.setBounds(10, 770, 620, 30);
     // inputPanel.setSize(620,50);
 
+    pufferNumber.setToolTipText("Puffergröße");
+
     f.getContentPane().add(mainPanel, BorderLayout.CENTER);
-    f.setSize(new Dimension(640, 880));
+    f.setSize(new Dimension(640, 860));
     f.setVisible(true);
+
+    mainPanel.getRootPane().setDefaultButton(describeButton);
+    describeButton.requestFocus();
 
     // init timer
     // --------------------------
@@ -154,32 +172,31 @@ public class Client {
      * Level.CONFIG: default information (incl. RTSP requests)
      * Level.ALL: debugging information (headers, received packages and so on)
      */
-    logger.setLevel(Level.CONFIG);
+    logger.setLevel(Level.FINE);
     Client theClient = new Client();  // Create a Client object
 
-    // get server RTSP port and IP address from the command line
-    // ------------------
-    int RTSP_server_port = Integer.parseInt(argv[1]);
+    // get server hostname/IP and RTSP port from the command line
     String ServerHost = argv[0];
+    int RTSP_server_port = Integer.parseInt(argv[1]);
     InetAddress ServerIPAddr = InetAddress.getByName(ServerHost);
     rtspPort = RTSP_server_port;
     rtspServer = ServerHost;
     rtspUrl = "rtsp://" + ServerHost + ":" + RTSP_server_port + "/";
-
-    // get video filename to request:
-    VideoFileName = argv[2];
+    VideoFileName = argv[2];    // get video filename to request:
     theClient.textField.setText(VideoFileName);
+    if (argv.length > 3) {
+      jitterBufferSize = Integer.parseInt(argv[3]); // adjust buffer size
+      theClient.pufferNumber.setText(argv[3]);
+      logger.log(Level.FINE, "Jitter buffer size: " + jitterBufferSize);
+    }
 
-    // Establish a TCP connection with the server to exchange RTSP messages
-    // ------------------
-    theClient.RTSPsocket = new Socket(ServerIPAddr, RTSP_server_port);
-
+    theClient.RTSPsocket = new Socket(ServerIPAddr, RTSP_server_port); // RTSP-connection
     // Set input and output stream filters:
     RTSPBufferedReader =
         new BufferedReader(new InputStreamReader(theClient.RTSPsocket.getInputStream()));
     RTSPBufferedWriter =
         new BufferedWriter(new OutputStreamWriter(theClient.RTSPsocket.getOutputStream()));
-    // RTSP protocol
+    // initialize RTSP protocol
     rtsp = new Rtsp(RTSPBufferedReader, RTSPBufferedWriter, RTP_RCV_PORT, rtspUrl, VideoFileName);
   }
 
@@ -187,11 +204,11 @@ public class Client {
     public void actionPerformed(ActionEvent e) {
       logger.log(Level.INFO, "Setup Button pressed ! ");
       rtsp.setVideoFileName( textField.getText() );
+      jitterBufferSize = Integer.parseInt(pufferNumber.getText());
 
       if (rtsp.setup()) {
-        // Init non-blocking RTPsocket that will be used to receive data
         try {
-          RTPsocket = new DatagramSocket(RTP_RCV_PORT );
+          RTPsocket = new DatagramSocket(RTP_RCV_PORT );  // receive Media data
           // for now FEC packets are received via RTP-Port, so keep comment below
           // FECsocket = new DatagramSocket(FEC_RCV_PORT);
 
@@ -213,6 +230,8 @@ public class Client {
           System.exit(0);
         }
         statusLabel.setText("READY");
+        mainPanel.getRootPane().setDefaultButton(playButton);
+        playButton.requestFocus();
       }
     }
   }
@@ -223,6 +242,8 @@ public class Client {
       logger.log(Level.INFO, "Play Button pressed ! ");
         if (rtsp.play()) {
           statusLabel.setText("PLAY ");
+          mainPanel.getRootPane().setDefaultButton(pauseButton);
+          pauseButton.requestFocus();
           timer.start(); // start playback RTP-frames
           timerPlay.start();
         }
@@ -235,6 +256,8 @@ public class Client {
       logger.log(Level.INFO, "Pause Button pressed ! ");
       if (rtsp.pause()) {
         statusLabel.setText("READY ");
+        mainPanel.getRootPane().setDefaultButton(playButton);
+        playButton.requestFocus();
           timer.stop();  // stop playback
           timerPlay.stop();
           timerPlay.setInitialDelay(0);
@@ -248,6 +271,8 @@ public class Client {
       logger.log(Level.INFO, "Teardown Button pressed ! ");
       if (rtsp.teardown()) {
         statusLabel.setText("INIT ");
+        progressPosition.setValue(0);
+        rtpHandler.reset();
         timer.stop();  // stop playback
         timerPlay.stop();
         RTPsocket.close();
@@ -271,7 +296,11 @@ public class Client {
       if (rtsp.getDuration() > 1) {
         // set progress bar from duration and framerate from server data
         progressPosition.setMaximum((int)rtsp.getDuration() * rtsp.getFramerate() );
+      } else {
+        progressPosition.setMaximum(videoLength);  // Demovideo htw.mjpeg, no metadata in MJPEG
       }
+      mainPanel.getRootPane().setDefaultButton(setupButton);
+      setupButton.requestFocus();
     }
   }
 
@@ -280,7 +309,6 @@ public class Client {
     byte[] buf = new byte[MAX_FRAME_SIZE]; // allocate memory to receive UDP data from server
 
     public void actionPerformed(ActionEvent e) {
-      //Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
       DatagramPacket rcvDp = new DatagramPacket(buf, buf.length); // RTP needs UDP socket
       try {
         RTPsocket.receive(rcvDp); // receive the DP from the socket:
@@ -299,7 +327,6 @@ public class Client {
     boolean videoStart = false;
 
     public void actionPerformed(ActionEvent e) {
-      //Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
       ReceptionStatistic rs = rtpHandler.getReceptionStatistic();
       byte[] payload;
 
@@ -323,7 +350,7 @@ public class Client {
         return;
       }
 
-      logger.log(Level.FINE, "----------------- Play timer --------------------");
+      logger.log(Level.FINER, "----------------- Play timer --------------------");
       payload = rtpHandler.nextPlaybackImage();
       if (payload == null) {
           return;
@@ -334,8 +361,7 @@ public class Client {
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         Image image = toolkit.createImage(payload, 0, payload.length);
 
-        // display the image as an ImageIcon object
-        icon = new ImageIcon(image);
+        icon = new ImageIcon(image);  // display the image as an ImageIcon object
         iconLabel.setIcon(icon);
 
       } catch (RuntimeException rex) {
@@ -344,28 +370,29 @@ public class Client {
     }
 
     private void setStatistics(ReceptionStatistic rs) {
-      DecimalFormat df = new DecimalFormat("###.###");
-      pufferLabel.setText(
-          "Puffer: "
-              + (rs.latestSequenceNumber - rs.playbackIndex)
-              + " aktuelle Nr. / Summe empf.: "
-              + rs.latestSequenceNumber
-              + " / "
-              + rs.receivedPackets);
-      statsLabel.setText(
-          "<html>Abspielzähler / verlorene Medienpakete // Bilder / verloren: "
-              + rs.playbackIndex
-              + " / "
-              + rs.packetsLost + " // " +rs.requestedFrames + " / " + rs.framesLost
-              + "<p/>"
-              + "</html>");
-      fecLabel.setText(
-          "FEC: korrigiert / nicht korrigiert: "
+      DecimalFormat df = new DecimalFormat("0.000");
+      pufferLabel.setText("Puffer: " + (rs.latestSequenceNumber - rs.playbackIndex));
+
+      receiveLabel.setText("empfangenes RTP mit SeqNr: " + rs.latestSequenceNumber);
+      receiveLabel2.setText("Summe empfangene RTPs: " + rs.receivedPackets);
+
+      statsLabel.setText("RTP: Index / verloren: "
+              + rs.playbackIndex + " / " + rs.packetsLost);
+
+      // <p> is for new line
+      statsLabel2.setText("<html>Bilder: Index / fehlend: "
+              +rs.requestedFrames + " / " + rs.framesLost   + "</html>");
+
+      fecLabel.setText("FEC: korrigiert / nicht korrigiert: "
               + rs.correctedPackets
               + " / "
-              + rs.notCorrectedPackets
-              + "  Ratio: "
-              + (df.format((double) rs.notCorrectedPackets / (double) rs.latestSequenceNumber)));
+              + rs.notCorrectedPackets);
+
+      // latestSequenceNumber is the last received RTP packet
+      fecLabel2.setText("Ratio vor FEC: "
+              + (df.format((double) rs.packetsLost / (double) rs.playbackIndex))
+              + "    nach FEC: "
+              + (df.format((double) rs.notCorrectedPackets / (double) rs.playbackIndex)));
     }
   }
 

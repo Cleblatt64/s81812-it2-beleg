@@ -1,5 +1,5 @@
 # Projektrahmen
-Im Praktikum werden Sie einen Client und Server für Videostreaming unter Nutzung des Real-Time-Streaming-Protokolls [RTSP](http://www.ietf.org/rfc/rfc2326.txt) implementieren. Die eigentlichen Videodaten werden mittels Real-Time-Protokoll [RTP](http://www.ietf.org/rfc/rfc3550.txt) übertragen. Ein großer Teil der Funktionalität ist bereits als Quelltext vorhanden, so das RTSP-Protokoll im Server, das RTP-Handling im Client sowie die Videoanzeige.
+Im Praktikum werden Sie einen Client und Server für Videostreaming unter Nutzung des Real-Time-Streaming-Protokolls [RTSP](http://www.ietf.org/rfc/rfc2326.txt) implementieren. Die eigentlichen Videodaten werden mittels Real-Time-Protokoll [RTP](http://www.ietf.org/rfc/rfc3550.txt) übertragen. Ein großer Teil der Funktionalität ist bereits als Quelltext vorhanden, so das RTSP-Protokoll für den Server, das RTP-Handling im Client sowie die Videoanzeige.
 Ihre Aufgabe besteht im Wesentlichen aus der Ergänzung der Quellcodes in den Punkten:
 * RTSP-Protokoll vervollständigen
 * RTP-Protokoll, Header im Server setzen
@@ -7,12 +7,12 @@ Ihre Aufgabe besteht im Wesentlichen aus der Ergänzung der Quellcodes in den Pu
 
 ## 1. Java-Klassen
 Das Projekt besteht aus mehreren Java-Klassen, die je nach Funktionsumfang für Client, Server oder auch beide Anwendungen eingesetzt werden.
-Die bereitgestellten Kassen mit der Endung <Demo> sind abstrakte Klassen, die noch ausprogrammiert werden müssen und den Klassennamen ohne <Demo> erhalten.
+Die bereitgestellten Kassen mit der Endung `Demo` sind abstrakte Klassen, die noch ausprogrammiert werden müssen und den Klassennamen ohne `Demo` erhalten.
 
 ### Server-seitige Klassen
+* [Server](src/Server.java): Funktionalität des Servers zur Antwort auf die RTSP-Clientanfragen und Streaming des Videos
 * [AviMetadataParser](AviMetadataParser.java): Extrahiert Metadaten aus AVI-Dateien
 * [QuickTimeMetadataParser](QuickTimeMetadataParser.java): Extrahiert Metadaten aus Quicktime-Movie-Dateien
-* [Server](src/Server.java): Funktionalität des Servers zur Antwort auf die RTSP-Clientanfragen und Streaming des Videos
 * [VideoReader](src/VideoReader.java): Einlesen einer MJPEG-Datei auf der Serverseite
 
 ### Client-seitige Klassen
@@ -20,15 +20,16 @@ Die bereitgestellten Kassen mit der Endung <Demo> sind abstrakte Klassen, die no
 * [ReceptionStatistic](src/ReceptionStatistic.java): Bereitstellung von Empfangsstatistiken
 
 ### Klassen für Server und Client
-* [CustomLoggingHandler](CustomLoggingHandler.java): Anpassung der Logger-Ausgaben für minimalen Overhead
-* [FecHandler](src/FecHandler.java): Unterstützung der Fehlerkorrektur mittels FEC
-* [FECpacket](src/FECpacket.java): Erweiterung der RTP-Klasse mit FEC-Funktionalität
-* [JpegFrame](src/JpegFrame): Codierung/Decodierung von JPEG-Bildern gemäß RFC-2435
-* [RTPpacket](src/RTPpacket.java): Funktionalität zur Unterstützung von RTP-Paketen
-* [VideoMetadata](VideoMetadata.java): Video-Metadaten wie Framerate und Abspieldauer
+* [RtspDemo](src/RtspDemo.java): Implementierung des RTSP-Protokolls für Client und Server
 * [RtpHandler](src/RtpHandler.java): Verarbeitung von RTP-Paketen
+* [RTPpacketDemo](src/RTPpacketDemo.java): Funktionalität zur Unterstützung von RTP-Paketen
+* [FecHandlerDemo](src/FecHandlerDemo.java): Unterstützung der Fehlerkorrektur mittels FEC
+* [FECpacket](src/FECpacket.java): Erweiterung der RTP-Klasse mit FEC-Funktionalität
+* [VideoMetadata](VideoMetadata.java): Video-Metadaten wie Framerate und Abspieldauer
+* [JpegFrame](src/JpegFrame): Codierung/Decodierung von JPEG-Bildern gemäß RFC-2435
 * [SrtpHandler](src/SrtpHandler.java): Verschlüsselung von RTP-Paketen
 * [JpegEncryptionHandler](src/JpegEncryptionHandler.java): Verschlüsselung von JPEG-Bildern (Quantisierungstabellen)
+* [CustomLoggingHandler](CustomLoggingHandler.java): Anpassung der Logger-Ausgaben für minimalen Overhead
 
 
 ## 2. Programmstart
@@ -36,16 +37,17 @@ Der Start des Servers erfolgt mittels `java Server RTSP-Port`. Der Standard-RTSP
 Sie können den Server auch mit den optionalen Parametern `java Server RTSP-Port lossRate groupSize` starten um die FEC-Optionen schon beim Progammstart zu konfigurieren.
 
 Der Start des Clients erfolgt mittels `java Client server_name server_port video_file`. Am Client können RTSP-Kommandos angefordert werden. 
-Eine Kommunikation läuft in der Regel folgendermaßen ab:  
-1. Client sendet DESCRIBE: Analyse der vorhandenen Streams und Parameter einer gewünschten Präsentation
-2. Client sendet SETUP: Erzeugung der Session und der Transportparameter anhand der vorab ermittelten Parameter
-3. Client sendet PLAY 
-4. Client sendet u.U. PAUSE
-5. Client sendet TEARDOWN: Terminierung der Session.
+Eine RTSP-Kommunikation läuft in der Regel folgendermaßen ab:  
+1. Client fragt vorhandene Servermethoden mittels OPTIONS ab.
+2. Client sendet DESCRIBE: Analyse der vorhandenen Streams und Parameter einer gewünschten Präsentation
+3. Client sendet SETUP: Erzeugung der Session und der Transportparameter anhand der vorab ermittelten Parameter
+4. Client sendet PLAY 
+5. Client sendet u.U. PAUSE
+6. Client sendet TEARDOWN: Terminierung der Session.
 Der Server antwortet auf alle Clientrequests. Die Antwortcodes sind ähnlich zu HTTP. Der Code 200 bedeutet z.B. Erfolg. Die RTSP-Antwortcodes finden Sie in [RTSP](http://www.ietf.org/rfc/rfc2326.txt).
 
 ## 3. Client
-Als ersten Schritt sollte das RTSP-Protokoll in der entsrechenden Klasse vervollständigt werden. Für die RTSP-Kommunikation mit dem Server wird der bereits geöffnete Socket verwendet. In jeden Request muss ein CSeq-Header eingefügt werden. Der Wert von CSeq erhöht sich bei jedem Senderequest.
+Als ersten Schritt sollte das RTSP-Protokoll in der entsprechenden Klasse vervollständigt werden. Für die RTSP-Kommunikation mit dem Server wird der bereits geöffnete Socket verwendet. In jeden Request muss ein CSeq-Header eingefügt werden. Der Wert von CSeq erhöht sich bei jedem Senderequest.
 
 ### Setup
 * Erzeugen eines Sockets für den Empfang der RTP-Pakete und setzen des Timeouts (5 ms)
@@ -66,7 +68,7 @@ Als ersten Schritt sollte das RTSP-Protokoll in der entsrechenden Klasse vervoll
 
 ### Beispiel
 Bitte beachten Sie, dass der im Praktikum verwendete RTSP-Parser im Client und Server nur eine Untermenge an möglichen Attributen unterstützt. Im Zweifelsfall schauen Sie bitte in die jeweilige Implementierung. 
-Sie können sich an dem folgenden Beispiel orientieren (C-Client, S-Server). je nach Konfiguration Ihres Rechners müssen Sie unter Umständen mit FQDN arbeiten (z.B. idefix.informatik.htw-dresden.de)
+Sie können sich an dem folgenden Beispiel orientieren (C-Client, S-Server). Je nach Konfiguration Ihres Rechners müssen Sie unter Umständen mit FQDN arbeiten (z.B. idefix.informatik.htw-dresden.de).
 ```
 C: OPTIONS * RTSP/1.0
  : CSeq: 1
@@ -75,6 +77,7 @@ S: RTSP/1.0 200 OK
  : CSeq: 1
  : Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE
 
+ 
 C: DESCRIBE rtsp://idefix/htw.mjpeg RTSP/1.0
  : CSeq: 2
 
@@ -83,18 +86,22 @@ S: RTSP/1.0 200 OK
  : Content-Base: rtsp://idefix/htw.mjpeg
  : Content-Type: application/sdp
  : Content-Length: 460
-  
+ :
+ : v=0 
  : m=video 0 RTP/AVP 96
-   [...]
+ : [...]
 
+   
 C: SETUP rtsp://idefix/htw.mjpeg/trackID=0 RTSP/1.0
  : CSeq: 3
  : Transport: RTP/AVP;unicast;client_port=25000-25001
 
 S: RTSP/1.0 200 OK
  : CSeq: 3
- : Session: 123456
+ : Transport: RTP/AVP;unicast;client_port=25000-250001;server_port=3333-3334
+ : Session: 123456;timeout=30000
 
+ 
 C: PLAY rtsp://idefix/htw.mjpeg RTSP/1.0
  : CSeq: 4
  : Session: 123456
@@ -103,6 +110,7 @@ S: RTSP/1.0 200 OK
  : CSeq: 4
  : Session: 123456
 
+ 
 C: PAUSE rtsp://idefix/htw.mjpeg RTSP/1.0
  : CSeq: 5
  : Session: 123456
@@ -111,6 +119,7 @@ S: RTSP/1.0 200 OK
  : CSeq: 5
  : Session: 123456
 
+ 
 C: TEARDOWN rtsp://idefix/htw.mjpeg RTSP/1.0
  : CSeq: 6
  : Session: 123456
