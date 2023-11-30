@@ -11,7 +11,7 @@ public class FecHandler extends FecHandlerDemo{
 
     @Override
     boolean checkCorrection(int nr, HashMap<Integer, RTPpacket> mediaPackets) {
-        if (fecList.get(fecNr.get(nr)) == null || fecList.get(nr) == null) return false;
+        if (fecStack.get(fecNr.get(nr)) == null || fecList.get(nr) == null) return false;
         int c=0;
         for (int i : fecList.get(nr)){
             if (mediaPackets.get(i) == null) c++;
