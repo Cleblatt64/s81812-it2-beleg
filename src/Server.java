@@ -293,6 +293,7 @@ public class Server extends JFrame implements ActionListener, ChangeListener {
           theServer.rtsp.send_RTSP_response(TEARDOWN);
           theServer.timer.stop();
           theServer.videoMeta = null;
+          theServer.rtpHandler.reset();
           break;
 
         case OPTIONS:
